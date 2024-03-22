@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.10)
 set(CMAKE_CXX_STANDARD 14)
 project(stereo_ros)
 
+set(CUDA_ARCHS "52;61;72;75;86" CACHE STRING "List of architectures to generate device code for")
+
 find_package(catkin REQUIRED 
 cv_bridge 
 dynamic_reconfigure 
@@ -36,9 +38,6 @@ find_package(CUDA REQUIRED)
 set(CUDA_ATTACH_VS_BUILD_RULE_TO_CUDA_FILE OFF)
 include_directories(${CUDA_INCLUDE_DIRS})
 
-# include_directories("stereo_cuda")
-# add_subdirectory(stereo_cuda) 
-
 catkin_package(
   CATKIN_DEPENDS 
   cv_bridge 
@@ -52,13 +51,15 @@ catkin_package(
 )
 
 include_directories(${Eigen_INCLUDE_DIRS})
-link_libraries(${Boost_LIBRARIES} ${OpenCV_LIBRARIES})
+# link_libraries(sgm ${Boost_LIBRARIES} ${OpenCV_LIBRARIES})
 include_directories(${catkin_INCLUDE_DIRS} include)
 add_definitions(-DOPENCV_TRAITS_ENABLE_DEPRECATED)
 
+include_directories("stereo_cuda")
+add_subdirectory(stereo_cuda) 
+
 add_executable(stereo_ros src/stereo_ros.cpp)
-target_link_libraries(stereo_ros ${Boost_LIBRARIES} ${OpenCV_LIBRARIES} ${catkin_LIBRARIES})
+target_link_libraries(stereo_ros sgm ${Boost_LIBRARIES} ${OpenCV_LIBRARIES} ${catkin_LIBRARIES})
 install(TARGETS stereo_ros
         DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
-
