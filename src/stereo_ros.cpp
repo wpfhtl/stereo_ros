@@ -54,6 +54,7 @@ stereoROS::stereoROS(ros::NodeHandle* nodehandle):nh_(*nodehandle){
 
     // pub_disp_ = nh_.advertise<DisparityImage>("/stereo_ros/disparity", 1);
     pub_disp_ = nh_.advertise<sensor_msgs::Image>("/stereo_ros/disparity", 1);
+    pub_disp_color_ = nh_.advertise<sensor_msgs::Image>("/stereo_ros/disparity_color", 1);
 
     stereoROS::setParam();
 }
@@ -141,10 +142,18 @@ void stereoROS::imageCb(const ImageConstPtr& l_image_msg, const ImageConstPtr& r
     cv_bridge::CvImage dispImage;
     dispImage.header = l_image_msg->header;
     dispImage.header.stamp = ros::Time::now();
-    dispImage.header.frame_id = "camera_link";
-    dispImage.encoding = "32FC1";  // "16UC1";  //
-    dispImage.image = disparity; // disp * 1000;  //
+    dispImage.header.frame_id = l_image_msg->header.frame_id;
+    dispImage.encoding = "32FC1"; 
+    dispImage.image = disparity; 
     pub_disp_.publish(*dispImage.toImageMsg());
+
+    cv_bridge::CvImage dispColorImage;
+    dispColorImage.header = l_image_msg->header;
+    dispColorImage.header.stamp = ros::Time::now();
+    dispColorImage.header.frame_id = l_image_msg->header.frame_id;
+    dispColorImage.encoding = "rgb8";
+    dispColorImage.image = disparity_color;
+    pub_disp_color_.publish(*dispColorImage.toImageMsg());
 
     if (save_or_not){
         string left_name = left_dir + time_msg_str + img_suffix;

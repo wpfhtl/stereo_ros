@@ -72,7 +72,7 @@ class stereoROS
     boost::shared_ptr<ExactSync> exact_sync_;
     boost::shared_ptr<ApproximateSync> approximate_sync_;
 
-    ros::Publisher pub_disp_;
+    ros::Publisher pub_disp_, pub_disp_color_;
     ros::Subscriber saver_sub_, stop_saver_sub_;
 
   public:
