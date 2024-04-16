@@ -143,7 +143,7 @@ void stereoROS::imageCb(const ImageConstPtr& l_image_msg, const ImageConstPtr& r
     dispImage.header = l_image_msg->header;
     dispImage.header.stamp = ros::Time::now();
     dispImage.header.frame_id = l_image_msg->header.frame_id;
-    dispImage.encoding = "32FC1"; 
+    dispImage.encoding = "16UC1"; 
     dispImage.image = disparity; 
     pub_disp_.publish(*dispImage.toImageMsg());
 
