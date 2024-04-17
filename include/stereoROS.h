@@ -47,6 +47,7 @@
 #include <cuda_runtime.h>
 
 #include <libsgm.h>
+#include <omp.h> 
 
 using namespace std;
 using namespace sensor_msgs;
@@ -72,7 +73,7 @@ class stereoROS
     boost::shared_ptr<ExactSync> exact_sync_;
     boost::shared_ptr<ApproximateSync> approximate_sync_;
 
-    ros::Publisher pub_disp_, pub_disp_color_;
+    ros::Publisher pub_disp_, pub_depth_;
     ros::Subscriber saver_sub_, stop_saver_sub_;
 
   public:
@@ -102,18 +103,16 @@ class stereoROS
     cv::Mat l_image, r_image;
     cv::Mat I1, I2;
     cv::Mat disparity;
-    cv::Mat disparity_color;
-    double scale = 0.5;
-    int offset_x = 0;
-    int offset_y = 0;
-    int crop_h = 576;
-    int crop_w = 1024;
+    cv::Mat depth;
+    double scale;
+    double focal = 475; // focal length
+    double bl = 0.119; // baseline
     float uniqueness = 0.95;
     int num_paths = 8;
     int min_disp = 0;
     int LR_max_diff = 1;
     int cen = 0;
-    int height, width;
+    int height=180, width=320;
     int src_depth = 8;
     int dst_depth = 8;
     int invalid_disp;

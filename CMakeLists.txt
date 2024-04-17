@@ -22,6 +22,11 @@ if (EIGEN3_FOUND)
    list(APPEND LINK_LIB_LIST ${EIGEN3_LIBRARIES})
 endif (EIGEN3_FOUND)
 
+# Find OpenMP
+find_package(OpenMP)
+if(OpenMP_CXX_FOUND)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${OpenMP_CXX_FLAGS}")
+endif()
 
 find_package(OpenCV  REQUIRED core imgproc calib3d highgui)
 include_directories(${OpenCV_INCLUDE_DIRS})
@@ -59,7 +64,7 @@ include_directories("stereo_cuda")
 add_subdirectory(stereo_cuda) 
 
 add_executable(stereo_ros src/stereo_ros.cpp)
-target_link_libraries(stereo_ros sgm ${Boost_LIBRARIES} ${OpenCV_LIBRARIES} ${catkin_LIBRARIES})
+target_link_libraries(stereo_ros sgm ${Boost_LIBRARIES} ${OpenCV_LIBRARIES} ${catkin_LIBRARIES} OpenMP::OpenMP_CXX)
 install(TARGETS stereo_ros
         DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

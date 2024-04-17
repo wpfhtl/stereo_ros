@@ -19,10 +19,10 @@ stereoROS::stereoROS(ros::NodeHandle* nodehandle):nh_(*nodehandle){
     private_nh.getParam("view_input", view_input);
     private_nh.getParam("view_output", view_output);
     private_nh.getParam("scale", scale);
-    private_nh.getParam("offset_x", offset_x);
-    private_nh.getParam("offset_y", offset_y);
-    private_nh.getParam("crop_w", crop_w);
-    private_nh.getParam("crop_h", crop_h);
+    // private_nh.getParam("offset_x", offset_x);
+    // private_nh.getParam("offset_y", offset_y);
+    // private_nh.getParam("width", width);
+    // private_nh.getParam("height", height);
     private_nh.getParam("p1", p1);
     private_nh.getParam("p2", p2);
     private_nh.getParam("disp_size", disp_size);
@@ -31,6 +31,8 @@ stereoROS::stereoROS(ros::NodeHandle* nodehandle):nh_(*nodehandle){
     private_nh.getParam("min_disp", min_disp);
     private_nh.getParam("LR_max_diff", LR_max_diff);
     private_nh.getParam("cen", cen);
+    private_nh.getParam("bl", bl);
+    private_nh.getParam("focal", focal);
     
     stereoROS::checkFolder(save_dir);
 
@@ -54,7 +56,7 @@ stereoROS::stereoROS(ros::NodeHandle* nodehandle):nh_(*nodehandle){
 
     // pub_disp_ = nh_.advertise<DisparityImage>("/stereo_ros/disparity", 1);
     pub_disp_ = nh_.advertise<sensor_msgs::Image>("/stereo_ros/disparity", 1);
-    pub_disp_color_ = nh_.advertise<sensor_msgs::Image>("/stereo_ros/disparity_color", 1);
+    pub_depth_ = nh_.advertise<sensor_msgs::Image>("/stereo_ros/depth", 1);
 
     stereoROS::setParam();
 }
@@ -72,8 +74,6 @@ void stereoROS::makeOutputFolder(string folderName)
 }
 
 void stereoROS::setParam(){
-    height = crop_h * scale;
-    width = crop_w * scale;
 	const sgm::PathType path_type = num_paths == 8 ? sgm::PathType::SCAN_8PATH : sgm::PathType::SCAN_4PATH;
     sgm::CensusType census_type = sgm::CensusType(cen);
 	const int dst_depth = disp_size < 256 ? 8 : 16;
@@ -88,6 +88,7 @@ void stereoROS::setParam(){
 
 	disparity = cv::Mat(height, width, dst_depth == 8 ? CV_8S : CV_16S);
 	// invalid_disp = new_sgm.get_invalid_disparity();
+    depth = cv::Mat(height, width, CV_32F);
 
 }
 
@@ -107,10 +108,15 @@ void stereoROS::imageCb(const ImageConstPtr& l_image_msg, const ImageConstPtr& r
     timeStampMsg.nsec = l_image_msg->header.stamp.nsec;
     string time_msg_str = to_string(timeStampMsg.sec) + "_" + to_string(timeStampMsg.nsec);
 
-    cv::Rect rect(offset_x, offset_y, crop_w, crop_h);
-    cv::resize(l_image(rect), I1, cv::Size(width, height));
-    cv::resize(r_image(rect), I2, cv::Size(width, height));
-    // std::cout << "Height and width after crop and resize: " << height << ", " << width << std::endl;
+    if (l_image.rows == height && l_image.cols == width){
+        I1 = l_image;
+        I2 = r_image;
+    }
+    else{
+        cv::resize(l_image, I1, cv::Size(width, height));
+        cv::resize(r_image, I2, cv::Size(width, height));
+        scale = width / l_image.cols;
+    }
 
     d_I1.upload(I1.data);
     d_I2.upload(I2.data);
@@ -120,7 +126,23 @@ void stereoROS::imageCb(const ImageConstPtr& l_image_msg, const ImageConstPtr& r
     cudaDeviceSynchronize();
 	d_disparity.download(disparity.data);
     invalid_disp = new_sgm.get_invalid_disparity();
-    colorize_disparity(disparity, disparity_color, disp_size, disparity == invalid_disp);
+
+    #pragma omp parallel for 
+    for(int i = 0; i < disparity.rows; ++i)
+    {
+        for(int j = 0; j < disparity.cols; ++j)
+        {
+            float d = disparity.at<float>(i, j);
+            if(d > 0) // To avoid division by zero
+            {
+                depth.at<float>(i, j) = (focal * bl) / d;
+            }
+            else
+            {
+                depth.at<float>(i, j) = 0;
+            }
+        }
+    }
 
 	// show image
     clock_t finish = clock();
@@ -134,26 +156,24 @@ void stereoROS::imageCb(const ImageConstPtr& l_image_msg, const ImageConstPtr& r
     }
 
     if (view_output == true){
-        cv::imshow("Disparity", disparity_color);
+        cv::imshow("Disparity", disparity);
         cv::waitKey(1);
     }
-
-    cv::Mat_<float> disp(height, width);
     cv_bridge::CvImage dispImage;
     dispImage.header = l_image_msg->header;
     dispImage.header.stamp = ros::Time::now();
     dispImage.header.frame_id = l_image_msg->header.frame_id;
-    dispImage.encoding = "16UC1"; 
+    dispImage.encoding = "8UC1"; 
     dispImage.image = disparity; 
     pub_disp_.publish(*dispImage.toImageMsg());
 
-    cv_bridge::CvImage dispColorImage;
-    dispColorImage.header = l_image_msg->header;
-    dispColorImage.header.stamp = ros::Time::now();
-    dispColorImage.header.frame_id = l_image_msg->header.frame_id;
-    dispColorImage.encoding = "rgb8";
-    dispColorImage.image = disparity_color;
-    pub_disp_color_.publish(*dispColorImage.toImageMsg());
+    cv_bridge::CvImage depthImage;
+    depthImage.header = l_image_msg->header;
+    depthImage.header.stamp = ros::Time::now();
+    depthImage.header.frame_id = l_image_msg->header.frame_id;
+    depthImage.encoding = "32FC1"; 
+    depthImage.image = depth; 
+    pub_depth_.publish(*depthImage.toImageMsg());   
 
     if (save_or_not){
         string left_name = left_dir + time_msg_str + img_suffix;
@@ -165,8 +185,8 @@ void stereoROS::imageCb(const ImageConstPtr& l_image_msg, const ImageConstPtr& r
         std::cout << "Saved " << right_name << std::endl;
 
         string disp_name = disp_dir + time_msg_str + img_suffix;
-        cv::Mat disp_16 = cv::Mat(disp.rows, disp.cols, CV_16UC1);
-        disp.convertTo(disp_16, CV_16UC1, 1000);
+        cv::Mat disp_16 = cv::Mat(disparity.rows, disparity.cols, CV_16UC1);
+        disparity.convertTo(disp_16, CV_16UC1, 1000);
         cv::imwrite(disp_name, disp_16);
         std::cout << "Saved " << disp_name << std::endl;
 

@@ -8,14 +8,12 @@
         <param name="approximate_sync" type="bool" value="false" />
         <param name="queue_size" type="int" value="1" />
 
-        <param name="scale" type="double" value="1.0" />
-        <param name="offset_x" type="int" value="0" />
-        <param name="offset_y" type="int" value="0" />
-        <param name="crop_h" type="int" value="576" />
-        <param name="crop_w" type="int" value="1024" />
+        <!-- <param name="scale" type="double" value="0.5" /> -->
+        <param name="height" type="int" value="180" />
+        <param name="width" type="int" value="320" />
         <param name="p1" type="int" value="10" />
         <param name="p2" type="int" value="120" />
-        <param name="disp_size" type="int" value="64" />
+        <param name="disp_size" type="int" value="32" />
         <param name="uniqueness" type="double" value="0.95" />
         <param name="num_paths" type="int" value="8" />
         <param name="min_disp" type="int" value="0" />
@@ -24,7 +22,7 @@
         <param name="focal" type="double" value="475" />
         <param name="bl" type="double" value="0.119" />
 
-        <remap from="/left/image_rect" to="/zed2/zed_node/left/image_rect_color"/>
-        <remap from="/right/image_rect" to="/zed2/zed_node/right/image_rect_color"/>
+        <remap from="/left/image_rect" to="/zed2i/zed_node/left/image_rect_color"/>
+        <remap from="/right/image_rect" to="/zed2i/zed_node/right/image_rect_color"/>
     </node>
 </launch>
